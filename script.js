@@ -4,7 +4,6 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// canvas settings
 ctx.fillStyle = "white";
 ctx.strokeStyle = "white";
 ctx.lineWidth = 1;
@@ -13,18 +12,19 @@ ctx.lineCap = "round";
 class Particle {
   constructor(effect) {
     this.effect = effect;
-    this.x = Math.floor(Math.random() * this.effect.width);
-    this.y = Math.floor(Math.random() * this.effect.height);
+    this.x = Math.random() * this.effect.width;
+    this.y = Math.random() * this.effect.height;
     this.speedX;
     this.speedY;
-    this.speedModifier = Math.floor(Math.random() * 5 + 1);
+    this.speedModifier = Math.random() * 5 + 1;
     this.history = [{ x: this.x, y: this.y }];
-    this.maxLength = Math.floor(Math.random() * 200 + 10);
+    this.maxLength = Math.random() * 200 + 10;
     this.angle = 0;
     this.timer = this.maxLength * 2;
     this.colors = ['#41B883', '#fff', '#6cf5b7', '#bbf2d9', '#6d9181', '#3ddbb6'];
     this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
   }
+
   draw(context) {
     context.beginPath();
     context.moveTo(this.history[0].x, this.history[0].y);
@@ -34,6 +34,7 @@ class Particle {
     context.strokeStyle = this.color;
     context.stroke();
   }
+
   update() {
     this.timer--;
     if (this.timer >= 1) {
@@ -42,10 +43,10 @@ class Particle {
       let index = y * this.effect.cols + x;
       this.angle = this.effect.flowField[index];
 
-      this.speedX = Math.cos(this.angle);
-      this.speedY = Math.sin(this.angle);
-      this.x += this.speedX * this.speedModifier;
-      this.y += this.speedY * this.speedModifier;
+      this.speedX = Math.cos(this.angle) * this.speedModifier;
+      this.speedY = Math.sin(this.angle) * this.speedModifier;
+      this.x += this.speedX;
+      this.y += this.speedY;
 
       this.history.push({ x: this.x, y: this.y });
       if (this.history.length > this.maxLength) {
@@ -57,48 +58,55 @@ class Particle {
       this.reset();
     }
   }
+
   reset() {
-    this.x = Math.floor(Math.random() * this.effect.width);
-    this.y = Math.floor(Math.random() * this.effect.height);
+    this.x = Math.random() * this.effect.width;
+    this.y = Math.random() * this.effect.height;
     this.history = [{ x: this.x, y: this.y }];
     this.timer = this.maxLength * 2;
   }
 }
 
 class Effect {
-  constructor(canvas) {
+  constructor(canvas, zoomSlider, particlesSlider) {
     this.canvas = canvas;
+    this.ctx = this.canvas.getContext("2d");
     this.width = this.canvas.width;
     this.height = this.canvas.height;
-    this.particles = [];
-    this.numberOfParticles = 3500;
+    this.zoomSlider = zoomSlider;
+    this.particlesSlider = particlesSlider;
     this.cellSize = 20;
-    this.rows;
-    this.cols;
-    this.flowField = [];
-    this.curve = 7;
-    this.zoom = 0.09;
     this.debug = false;
+
+    this.zoom = parseFloat(this.zoomSlider.value);
+    this.curve = 7;
+    this.numberOfParticles = parseInt(this.particlesSlider.value);
+
     this.init();
 
-    window.addEventListener("keydown", (e) => {
-      console.log(e);
-      if (e.key === "d") this.debug = !this.debug;
+    this.zoomSlider.addEventListener('input', (e) => {
+      this.zoom = parseFloat(e.target.value);
+      this.init();
     });
 
-    window.addEventListener('resize', e => {
-      this.resize(e.target.innerWidth, e.target.innerHeight);
+    this.particlesSlider.addEventListener('input', (e) => {
+      this.numberOfParticles = parseInt(e.target.value);
+      this.init();
+    });
+
+    window.addEventListener('resize', () => {
+      this.resize(window.innerWidth, window.innerHeight);
     });
   }
+
   init() {
-    //create flow field
-    this.rows = Math.floor(canvas.height / this.cellSize);
-    this.cols = Math.floor(canvas.width / this.cellSize);
+    this.rows = Math.floor(this.height / this.cellSize);
+    this.cols = Math.floor(this.width / this.cellSize);
     this.flowField = [];
+
     for (let y = 0; y <= this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
-        let angle =
-          (Math.cos(x * this.zoom) + Math.sin(y * this.zoom)) + this.curve;
+        let angle = (Math.cos(x * this.zoom) + Math.sin(y * this.zoom)) * this.curve;
         this.flowField.push(angle);
       }
     }
@@ -135,6 +143,7 @@ class Effect {
     this.height = this.canvas.height;
     this.init();
   }
+
   render(context) {
     if (this.debug) this.drawGrid(context);
     this.particles.forEach((particle) => {
@@ -144,13 +153,15 @@ class Effect {
   }
 }
 
-const effect = new Effect(canvas);
-effect.render(ctx);
-console.log(effect);
+// Initialize sliders and effect
+const zoomSlider = document.getElementById('zoomSlider');
+const particlesSlider = document.getElementById('particlesSlider');
+const effect = new Effect(canvas, zoomSlider, particlesSlider);
 
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   effect.render(ctx);
   requestAnimationFrame(animate);
 }
+
 animate();
